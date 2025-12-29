@@ -1,4 +1,10 @@
 #include "game_rule.h"
+#include <stdio.h>
+#include <string.h>
+
+// 最高分全局变量定义
+HighScore highScores[MAX_HIGH_SCORES];
+int highScoreCount = 0;
 
 // 生成下一个预览防御单位（随机）
 void generateNextTower() {
@@ -87,6 +93,9 @@ void updateWave() {
             // 波次完成奖励
             game.money += 50 + game.wave * 10;
             game.score += 100 * game.gameLevel;
+            
+            // 更新最高分显示
+            updateHighScoreDisplay();
         }
     }
 
@@ -122,5 +131,81 @@ void startNewWave() {
 void updateHighScoreDisplay() {
     if (game.score > game.highScore) {
         game.highScore = game.score;
+    }
+}
+
+// 从文件读取最高分记录（从game_core.cpp移过来）
+void loadHighScores() {
+    FILE* file = fopen("highscores.dat", "rb");  // 以二进制只读方式打开文件
+    if (file) {
+        // 读取记录数量
+        fread(&highScoreCount, sizeof(int), 1, file);
+        // 确保不超过最大记录数
+        if (highScoreCount > MAX_HIGH_SCORES) highScoreCount = MAX_HIGH_SCORES;
+        // 读取记录数据
+        fread(highScores, sizeof(HighScore), highScoreCount, file);
+        fclose(file);
+        
+        // 设置当前最高分显示
+        if (highScoreCount > 0) {
+            game.highScore = highScores[0].score;  // 最高分是第一个记录
+        }
+    }
+}
+
+// 保存最高分记录到文件（从game_core.cpp移过来）
+void saveHighScores() {
+    FILE* file = fopen("highscores.dat", "wb");  // 以二进制写入方式打开文件
+    if (file) {
+        // 写入记录数量
+        fwrite(&highScoreCount, sizeof(int), 1, file);
+        // 写入记录数据
+        fwrite(highScores, sizeof(HighScore), highScoreCount, file);
+        fclose(file);
+    }
+}
+
+// 更新最高分记录函数（从game_core.cpp移过来）
+void updateHighScores() {
+    // 如果当前得分超过最低记录或记录未满
+    if (highScoreCount < MAX_HIGH_SCORES || game.score > highScores[MAX_HIGH_SCORES - 1].score) {
+        // 创建新记录
+        HighScore newScore;
+        strcpy(newScore.name, "Player");  // 默认玩家名
+        newScore.score = game.score;      // 当前得分
+        newScore.level = game.gameLevel;  // 当前等级
+
+        // 插入排序：找到合适的位置插入新记录
+        int i;
+        for (i = highScoreCount - 1; i >= 0; i--) {
+            // 如果是第一个位置或得分低于前一个记录
+            if (i == 0 || game.score <= highScores[i - 1].score) {
+                if (i < MAX_HIGH_SCORES - 1) {
+                    highScores[i] = newScore;  // 插入新记录
+                }
+                break;
+            }
+            else {
+                if (i < MAX_HIGH_SCORES - 1) {
+                    highScores[i] = highScores[i - 1];  // 后移记录
+                }
+            }
+        }
+
+        // 如果是在数组开始位置插入
+        if (i < 0 && highScoreCount < MAX_HIGH_SCORES) {
+            highScores[0] = newScore;
+        }
+
+        // 如果记录数未满，增加计数
+        if (highScoreCount < MAX_HIGH_SCORES) {
+            highScoreCount++;
+        }
+
+        // 保存到文件
+        saveHighScores();
+        
+        // 更新游戏中的最高分显示
+        game.highScore = highScores[0].score;
     }
 }
