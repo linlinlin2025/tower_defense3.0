@@ -4,6 +4,7 @@
 
 #include "game_core.h"
 
+<<<<<<< HEAD
 // 敌人配置函数
 void initEnemyConfig(GameConfig* config);
 
@@ -16,3 +17,10 @@ void updateEnemies(float deltaTime);
 void drawEnemies();
 
 #endif // GAME_ENEMY_H
+=======
+// 敌人相关函数声明
+void spawnEnemy();
+void updateEnemies();
+
+#endif#pragma once
+>>>>>>> main
