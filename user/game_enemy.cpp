@@ -1,147 +1,203 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "game_enemy.h"
+#include <graphics.h>
+#include <math.h>
 
-// 生成敌人函数，随机选择路径
-void spawnEnemy() {
-    // 检查敌人数量限制
+// 初始化敌人配置
+void initEnemyConfig(GameConfig* config) {
+    // 敌人得分配置
+    config->enemyScores[ENEMY_BASIC] = 10;  // 基础敌人得分
+    config->enemyScores[ENEMY_FAST] = 20;   // 快速敌人得分
+    config->enemyScores[ENEMY_TANK] = 30;   // 坦克敌人得分
+
+    // 敌人生命值
+    config->enemyHealth[ENEMY_BASIC] = 50;
+    config->enemyHealth[ENEMY_FAST] = 30;
+    config->enemyHealth[ENEMY_TANK] = 150;
+
+    // 敌人速度（像素/秒）
+    config->enemySpeed[ENEMY_BASIC] = 60.0f;   // 1.5格/秒
+    config->enemySpeed[ENEMY_FAST] = 120.0f;   // 3.0格/秒
+    config->enemySpeed[ENEMY_TANK] = 32.0f;    // 0.8格/秒
+
+    // 敌人金钱奖励
+    config->enemyGoldReward[ENEMY_BASIC] = 10;
+    config->enemyGoldReward[ENEMY_FAST] = 15;
+    config->enemyGoldReward[ENEMY_TANK] = 25;
+
+    // 敌人对基地的伤害
+    config->enemyDamage[ENEMY_BASIC] = 5;
+    config->enemyDamage[ENEMY_FAST] = 8;
+    config->enemyDamage[ENEMY_TANK] = 15;
+
+    // 敌人颜色
+    config->enemyColors[ENEMY_BASIC] = RGB(150, 150, 150);  // 灰色
+    config->enemyColors[ENEMY_FAST] = RGB(100, 200, 100);   // 绿色
+    config->enemyColors[ENEMY_TANK] = RGB(200, 100, 100);   // 红色
+}
+
+// 生成敌人
+void spawnEnemy(EnemyType type, int pathId) {
     if (game.enemyCount >= MAX_ENEMIES) return;
-    // 检查当前波次是否已完成生成
-    if (game.enemiesSpawned >= game.enemiesInWave) return;
 
     Enemy* e = &game.enemies[game.enemyCount];
 
-    // 随机选择敌人类型（概率分布）
-    int typeRand = rand() % 100;  // 0-99随机数
-    EnemyType type;
+    e->type = type;
+    e->health = config.enemyHealth[type];
+    e->maxHealth = config.enemyHealth[type];
+    e->speed = config.enemySpeed[type];
+    e->pathId = pathId;
+    e->waypointIndex = 0;
+    e->moneyReward = config.enemyGoldReward[type];
+    e->scoreReward = config.enemyScores[type];
+    e->baseDamage = config.enemyDamage[type];
 
-    // 概率分布：基础40%，快速30%，坦克30%
-    if (typeRand < 40) type = ENEMY_BASIC;     // 0-39：基础敌人
-    else if (typeRand < 70) type = ENEMY_FAST; // 40-69：快速敌人
-    else type = ENEMY_TANK;                    // 70-99：坦克敌人
-
-    // 随机选择路径（0,1,2）
-    int pathId = rand() % NUM_PATHS;
-
-    // 设置起点位置（第一个路径点）
-    e->gridX = game.paths[pathId][0].x;
-    e->gridY = game.paths[pathId][0].y;
-    e->x = e->gridX * GRID_SIZE + GRID_SIZE / 2;  // 像素坐标
-    e->y = e->gridY * GRID_SIZE + GRID_SIZE / 2;
-    e->pathIndex = 1;  // 下一个目标路径点索引
-    e->pathId = pathId; // 记录使用的路径ID
-
-    e->type = type;     // 敌人类型
-    e->isAlive = 1;     // 设置为存活状态
-
-    // 根据敌人类型设置具体属性
-    switch (type) {
-    case ENEMY_BASIC:  // 基础敌人
-        e->speed = 0.8 * game.gameSpeed;  // 基础速度受游戏速度影响
-        e->maxSpeed = 2;
-        e->life = 50 + game.wave * 5;  // 生命随波次增加
-        e->damage = 5;                 // 对基地伤害
-        e->money = 10;                 // 击杀奖励
-        e->color = RGB(150, 150, 150); // 灰色
-        break;
-    case ENEMY_FAST:   // 快速敌人
-        e->speed = 1.5 * game.gameSpeed;
-        e->maxSpeed = 3;
-        e->life = 30 + game.wave * 3;
-        e->damage = 3;
-        e->money = 15;
-        e->color = RGB(100, 200, 100); // 绿色
-        break;
-    case ENEMY_TANK:   // 坦克敌人
-        e->speed = 0.5 * game.gameSpeed;
-        e->maxSpeed = 1;
-        e->life = 100 + game.wave * 10;
-        e->damage = 10;
-        e->money = 25;
-        e->color = RGB(200, 100, 100); // 红色
-        break;
+    // 应用波次强化
+    if (game.wave > 1) {
+        float waveMultiplier = 1.0f + (game.wave - 1) * 0.2f; // 每波增加20%
+        e->health = (int)(e->health * waveMultiplier);
+        e->maxHealth = e->health;
+        e->speed *= waveMultiplier;
+        e->moneyReward = (int)(e->moneyReward * waveMultiplier);
+        e->scoreReward = (int)(e->scoreReward * waveMultiplier);
     }
 
-    e->maxLife = e->life;  // 设置最大生命值
+    // 设置初始位置为路径起点
+    if (pathId < NUM_PATHS && game.pathCounts[pathId] > 0) {
+        e->x = game.paths[pathId][0].x;
+        e->y = game.paths[pathId][0].y;
+    }
 
-    // 更新计数
-    game.enemyCount++;       // 敌人总数增加
-    game.enemiesSpawned++;   // 当前波次已生成敌人数增加
+    game.enemyCount++;
+    game.enemiesSpawned++;
 }
 
-// 更新敌人移动，根据路径ID选择对应的路径
-void updateEnemies() {
-    // 遍历所有敌人
+// 更新波次生成
+void updateWaveSpawning(float deltaTime) {
+    if (!game.waveSpawning || game.enemiesSpawned >= game.enemiesInWave) {
+        // 如果所有敌人都已生成，检查是否还有敌人存活
+        if (game.enemyCount == 0 && game.enemiesSpawned >= game.enemiesInWave) {
+            game.waveSpawning = 0;
+            game.waveStarted = 0;
+
+            // 进入下一波
+            game.wave++;
+            game.enemiesSpawned = 0;
+
+            // 增加下一波的敌人数量
+            game.enemiesInWave = config.initialEnemiesInWave +
+                (game.wave - 1) * config.waveEnemyIncrease;
+
+            // 重新激活开始波次按钮
+            game.buttons[BUTTON_START_WAVE].active = 1;
+        }
+        return;
+    }
+
+    // 更新生成计时器
+    game.enemySpawnTimer += deltaTime;
+
+    // 每1秒生成一个敌人
+    if (game.enemySpawnTimer >= 1.0f) {
+        // 随机选择敌人类型和路径
+        EnemyType type = (EnemyType)(rand() % MAX_ENEMY_TYPES);
+        int pathId = rand() % NUM_PATHS;
+
+        spawnEnemy(type, pathId);
+        game.enemySpawnTimer = 0;
+    }
+}
+
+// 更新所有敌人
+void updateEnemies(float deltaTime) {
     for (int i = 0; i < game.enemyCount; i++) {
         Enemy* e = &game.enemies[i];
-        // 跳过死亡的敌人
-        if (!e->isAlive) continue;
 
-        // 检查是否到达路径终点
-        if (e->pathIndex >= game.pathCounts[e->pathId]) {
-            // 到达终点，对基地造成伤害
-            e->isAlive = 0;  // 敌人消失
-            game.life -= e->damage;  // 减少基地生命
+        // 检查是否到达终点
+        if (e->waypointIndex >= game.pathCounts[e->pathId] - 1) {
+            // 对基地造成伤害
+            game.life -= e->baseDamage;
 
-            // 检查游戏是否结束
-            if (game.life <= 0) {
-                game.life = 0;
-                game.gameOver = 1;  // 游戏结束
-                updateHighScores(); // 更新最高分记录
-            }
-            continue;  // 处理下一个敌人
+            // 移除敌人
+            game.enemies[i] = game.enemies[game.enemyCount - 1];
+            game.enemyCount--;
+            i--;
+            continue;
         }
 
-        // 获取当前目标路径点（根据路径ID）
-        POINT target = game.paths[e->pathId][e->pathIndex];
-        float targetX = target.x * GRID_SIZE + GRID_SIZE / 2;  // 转换为像素坐标
-        float targetY = target.y * GRID_SIZE + GRID_SIZE / 2;
+        // 获取当前目标路径点
+        Point* target = &game.paths[e->pathId][e->waypointIndex + 1];
 
-        // 计算当前位置到目标位置的向量
-        float dx = targetX - e->x;
-        float dy = targetY - e->y;
-        float dist = sqrt(dx * dx + dy * dy);  // 计算距离
+        // 计算到目标的向量
+        float targetX = target->x * GRID_SIZE + GRID_SIZE / 2;
+        float targetY = target->y * GRID_SIZE + GRID_SIZE / 2;
+        float currentX = e->x * GRID_SIZE + GRID_SIZE / 2;
+        float currentY = e->y * GRID_SIZE + GRID_SIZE / 2;
 
-        // 如果到达目标路径点（距离小于2像素）
-        if (dist < 2) {
-            e->pathIndex++;  // 移动到下一个路径点
+        float dx = targetX - currentX;
+        float dy = targetY - currentY;
+        float distance = sqrt(dx * dx + dy * dy);
+
+        // 移动到目标路径点
+        float moveDistance = e->speed * deltaTime;
+
+        if (moveDistance >= distance) {
+            // 到达路径点
+            e->x = target->x;
+            e->y = target->y;
+            e->waypointIndex++;
         }
         else {
-            // 向目标位置移动
-            e->x += (dx / dist) * e->speed;  // 归一化方向向量乘以速度
-            e->y += (dy / dist) * e->speed;
-        }
-    }
-
-    // 清理死亡的敌人（从数组中移除）
-    for (int i = 0; i < game.enemyCount; i++) {
-        if (!game.enemies[i].isAlive) {
-            // 将后面的敌人向前移动，覆盖死亡的敌人
-            for (int j = i; j < game.enemyCount - 1; j++) {
-                game.enemies[j] = game.enemies[j + 1];
-            }
-            game.enemyCount--;  // 敌人计数减少
-            i--;  // 重新检查当前位置（因为元素已移动）
+            // 向目标移动
+            e->x += dx / distance * moveDistance / GRID_SIZE;
+            e->y += dy / distance * moveDistance / GRID_SIZE;
         }
     }
 }
 
-// 绘制敌人（在drawGame函数中调用）
+// 绘制所有敌人
 void drawEnemies() {
     for (int i = 0; i < game.enemyCount; i++) {
         Enemy* e = &game.enemies[i];
 
-        // 绘制敌人身体（圆形）
-        setfillcolor(e->color);
-        solidcircle(e->x, e->y, GRID_SIZE / 3);
+        // 绘制敌人身体
+        setfillcolor(config.enemyColors[e->type]);
+        fillcircle(e->x * GRID_SIZE + GRID_SIZE / 2,
+            e->y * GRID_SIZE + GRID_SIZE / 2,
+            GRID_SIZE / 3);
 
-        // 绘制白色边框
-        setlinecolor(RGB(255, 255, 255));
-        circle(e->x, e->y, GRID_SIZE / 3);
+        // 绘制生命条背景
+        setfillcolor(RGB(100, 0, 0));
+        fillrectangle(e->x * GRID_SIZE + 2,
+            e->y * GRID_SIZE - 8,
+            (e->x + 1) * GRID_SIZE - 2,
+            e->y * GRID_SIZE - 4);
 
-        // 绘制生命条（红色）
-        float lifeRatio = (float)e->life / e->maxLife;  // 计算生命比例
-        setfillcolor(RGB(255, 0, 0));
-        fillrectangle(e->x - GRID_SIZE / 2, e->y - GRID_SIZE / 2 - 5,
-            e->x - GRID_SIZE / 2 + GRID_SIZE * lifeRatio,
-            e->y - GRID_SIZE / 2 - 2);
+        // 绘制当前生命条
+        float healthRatio = (float)e->health / e->maxHealth;
+        int barWidth = (int)((GRID_SIZE - 4) * healthRatio);
+
+        setfillcolor(RGB(0, 200, 0));
+        fillrectangle(e->x * GRID_SIZE + 2,
+            e->y * GRID_SIZE - 8,
+            e->x * GRID_SIZE + 2 + barWidth,
+            e->y * GRID_SIZE - 4);
+
+        // 绘制敌人类型标识
+        settextcolor(RGB(255, 255, 255));
+        setbkmode(TRANSPARENT);
+        TCHAR typeChar;
+        switch (e->type) {
+        case ENEMY_BASIC: typeChar = 'B'; break;
+        case ENEMY_FAST: typeChar = 'F'; break;
+        case ENEMY_TANK: typeChar = 'T'; break;
+        default: typeChar = '?';
+        }
+
+        int textWidth = textwidth(&typeChar);
+        int textHeight = textheight(&typeChar);
+        outtextxy(e->x * GRID_SIZE + (GRID_SIZE - textWidth) / 2,
+            e->y * GRID_SIZE + (GRID_SIZE - textHeight) / 2,
+            &typeChar);
     }
 }

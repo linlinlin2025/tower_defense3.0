@@ -1,34 +1,30 @@
+// game_core.cpp - 修改后的版本
 #define _CRT_SECURE_NO_WARNINGS
 #include "game_core.h"
-#include "game_rule.h" 
+#include "game_defense.h"
+#include "game_enemy.h"
+#include <graphics.h>
 
 // 全局变量定义
 GameState game;
 GameConfig config;
-HighScore highScores[MAX_HIGH_SCORES];
-int highScoreCount = 0;
 
-// 初始化游戏配置函数
+// 初始化游戏配置函数 - 集中调用各模块配置
 void initConfig() {
-    // 炮台成本配置
-    config.towerCosts[TOWER_BASIC] = 100;   // 基础炮塔成本
-    config.towerCosts[TOWER_ARROW] = 150;   // 初级箭塔成本
-    config.towerCosts[TOWER_CANNON] = 200;  // 加农炮成本
-    config.towerCosts[TOWER_MAGIC] = 300;   // 魔法塔成本
-
-    // 升级成本配置
-    config.upgradeCosts[0] = 50;   // 1级升2级
-    config.upgradeCosts[1] = 100;  // 2级升3级
-    config.upgradeCosts[2] = 200;  // 3级升4级（保留）
-
-    // 敌人得分配置
-    config.enemyScores[ENEMY_BASIC] = 10;  // 基础敌人得分
-    config.enemyScores[ENEMY_FAST] = 20;   // 快速敌人得分
-    config.enemyScores[ENEMY_TANK] = 30;   // 坦克敌人得分
-
     // 基础配置
     config.baseLife = 100;   // 基地初始生命
     config.baseMoney = 500;  // 初始金钱
+    config.baseScore = 0;    // 初始得分
+
+    // 波次配置
+    config.waveEnemyIncrease = 3;      // 每波敌人数量增加量
+    config.waveHealthMultiplier = 1.2; // 每波敌人生命值倍率
+    config.waveSpeedMultiplier = 1.1;  // 每波敌人速度倍率
+    config.initialEnemiesInWave = 5;   // 第一波敌人数量
+
+    // 调用各模块的配置初始化函数
+    initTowerConfig(&config);    // 防御模块配置（包含炮台和升级配置）
+    initEnemyConfig(&config);    // 敌人模块配置
 }
 
 void initPathGrid() {
@@ -187,7 +183,7 @@ void initButtons() {
     game.buttons[BUTTON_START_WAVE].y = panelY;
     game.buttons[BUTTON_START_WAVE].width = 80;
     game.buttons[BUTTON_START_WAVE].height = 30;
-    game.buttons[BUTTON_START_WAVE].text = _T("开始波次");
+    _tcscpy(game.buttons[BUTTON_START_WAVE].text, _T("开始波次"));
     game.buttons[BUTTON_START_WAVE].active = 1;
     game.buttons[BUTTON_START_WAVE].hovered = 0;
     game.buttons[BUTTON_START_WAVE].clicked = 0;
@@ -197,7 +193,7 @@ void initButtons() {
     game.buttons[BUTTON_PAUSE].y = panelY;
     game.buttons[BUTTON_PAUSE].width = 80;
     game.buttons[BUTTON_PAUSE].height = 30;
-    game.buttons[BUTTON_PAUSE].text = _T("暂停");
+    _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("暂停"));
     game.buttons[BUTTON_PAUSE].active = 1;
     game.buttons[BUTTON_PAUSE].hovered = 0;
     game.buttons[BUTTON_PAUSE].clicked = 0;
@@ -207,7 +203,7 @@ void initButtons() {
     game.buttons[BUTTON_UPGRADE].y = panelY + 40;
     game.buttons[BUTTON_UPGRADE].width = 80;
     game.buttons[BUTTON_UPGRADE].height = 30;
-    game.buttons[BUTTON_UPGRADE].text = _T("升级");
+    _tcscpy(game.buttons[BUTTON_UPGRADE].text, _T("升级"));
     game.buttons[BUTTON_UPGRADE].active = 0;
     game.buttons[BUTTON_UPGRADE].hovered = 0;
     game.buttons[BUTTON_UPGRADE].clicked = 0;
@@ -217,7 +213,7 @@ void initButtons() {
     game.buttons[BUTTON_REMOVE].y = panelY + 40;
     game.buttons[BUTTON_REMOVE].width = 80;
     game.buttons[BUTTON_REMOVE].height = 30;
-    game.buttons[BUTTON_REMOVE].text = _T("移除");
+    _tcscpy(game.buttons[BUTTON_REMOVE].text, _T("移除"));
     game.buttons[BUTTON_REMOVE].active = 0;
     game.buttons[BUTTON_REMOVE].hovered = 0;
     game.buttons[BUTTON_REMOVE].clicked = 0;
@@ -227,7 +223,7 @@ void initButtons() {
     game.buttons[BUTTON_EXIT].y = panelY + 80;
     game.buttons[BUTTON_EXIT].width = 170;
     game.buttons[BUTTON_EXIT].height = 30;
-    game.buttons[BUTTON_EXIT].text = _T("退出游戏");
+    _tcscpy(game.buttons[BUTTON_EXIT].text, _T("退出游戏"));
     game.buttons[BUTTON_EXIT].active = 1;
     game.buttons[BUTTON_EXIT].hovered = 0;
     game.buttons[BUTTON_EXIT].clicked = 0;
@@ -237,69 +233,10 @@ void initButtons() {
     game.buttons[BUTTON_RESUME].y = 10;
     game.buttons[BUTTON_RESUME].width = 120;
     game.buttons[BUTTON_RESUME].height = 40;
-    game.buttons[BUTTON_RESUME].text = _T("继续游戏");
+    _tcscpy(game.buttons[BUTTON_RESUME].text, _T("继续游戏"));
     game.buttons[BUTTON_RESUME].active = 0;
     game.buttons[BUTTON_RESUME].hovered = 0;
     game.buttons[BUTTON_RESUME].clicked = 0;
-}
-
-// 从文件读取最高分记录
-void loadHighScores() {
-    FILE* file = fopen("highscores.dat", "rb");  // 以二进制只读方式打开文件
-    if (file) {
-        // 读取记录数量
-        fread(&highScoreCount, sizeof(int), 1, file);
-        // 确保不超过最大记录数
-        if (highScoreCount > MAX_HIGH_SCORES) highScoreCount = MAX_HIGH_SCORES;
-        // 读取记录数据
-        fread(highScores, sizeof(HighScore), highScoreCount, file);
-        fclose(file);
-    }
-}
-
-// 保存最高分记录到文件
-void saveHighScores() {
-    FILE* file = fopen("highscores.dat", "wb");  // 以二进制写入方式打开文件
-    if (file) {
-        // 写入记录数量
-        fwrite(&highScoreCount, sizeof(int), 1, file);
-        // 写入记录数据
-        fwrite(highScores, sizeof(HighScore), highScoreCount, file);
-        fclose(file);
-    }
-}
-
-// 更新最高分记录函数
-void updateHighScores() {
-    // 如果当前得分超过最低记录
-    if (game.score > highScores[MAX_HIGH_SCORES - 1].score) {
-        // 创建新记录
-        HighScore newScore;
-        strcpy(newScore.name, "Player");  // 默认玩家名
-        newScore.score = game.score;      // 当前得分
-        newScore.level = game.gameLevel;  // 当前等级
-
-        // 插入排序：找到合适的位置插入新记录
-        int i;
-        for (i = MAX_HIGH_SCORES - 1; i >= 0; i--) {
-            // 如果是第一个位置或得分低于前一个记录
-            if (i == 0 || game.score <= highScores[i - 1].score) {
-                highScores[i] = newScore;  // 插入新记录
-                break;
-            }
-            else {
-                highScores[i] = highScores[i - 1];  // 后移记录
-            }
-        }
-
-        // 如果记录数未满，增加计数
-        if (highScoreCount < MAX_HIGH_SCORES) {
-            highScoreCount++;
-        }
-
-        // 保存到文件
-        saveHighScores();
-    }
 }
 
 // 初始化游戏函数：设置游戏初始状态
@@ -309,10 +246,10 @@ void initGame() {
     // 初始化游戏状态
     game.money = config.baseMoney;
     game.life = config.baseLife;
-    game.score = 0;
-    game.highScore = (highScoreCount > 0) ? highScores[0].score : 0;
+    game.score = config.baseScore;
+    game.highScore = 0;  // 初始为0，稍后从文件加载
     game.wave = 1;
-    game.enemiesInWave = 5;
+    game.enemiesInWave = config.initialEnemiesInWave;
     game.enemiesSpawned = 0;
     game.gameSpeed = 1.0;
     game.gameLevel = 1;
@@ -339,8 +276,8 @@ void initGame() {
     // 加载最高分
     loadHighScores();
 
-    // 生成第一个预览炮台 - 添加这一行！
-    generateNextTower();  // 调用 generateNextTower 来初始化 nextTower
+    // 生成第一个预览炮台
+    generateNextTower();
 }
 
 // 检查点是否在按钮内
@@ -351,7 +288,7 @@ int isPointInButton(int x, int y, Button* btn) {
 
 // 处理按钮点击
 void handleButtonClick(int x, int y) {
-    for (int i = 0; i < 6; i++) {  // 现在有6个按钮
+    for (int i = 0; i < MAX_BUTTONS; i++) {
         if (game.buttons[i].active && isPointInButton(x, y, &game.buttons[i])) {
             switch (i) {
             case BUTTON_START_WAVE:
@@ -360,6 +297,7 @@ void handleButtonClick(int x, int y) {
                     game.waveSpawning = 1;   // 开始生成敌人
                     game.enemySpawnTimer = 0;
                     game.waveDelayTimer = 0;
+                    game.buttons[BUTTON_START_WAVE].active = 0; // 禁用开始按钮
                 }
                 break;
 
@@ -367,11 +305,23 @@ void handleButtonClick(int x, int y) {
                 if (!game.gameOver) {
                     game.gamePaused = !game.gamePaused;  // 切换暂停状态
                     if (game.gamePaused) {
-                        game.buttons[BUTTON_PAUSE].text = _T("继续");
+                        _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("继续"));
                     }
                     else {
-                        game.buttons[BUTTON_PAUSE].text = _T("暂停");
+                        _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("继续"));
                     }
+                }
+                break;
+
+            case BUTTON_UPGRADE:
+                if (!game.gamePaused && !game.gameOver && game.selectedTower != NULL) {
+                    upgradeSelectedTower();  // 调用防御模块函数
+                }
+                break;
+
+            case BUTTON_REMOVE:
+                if (!game.gamePaused && !game.gameOver && game.selectedTower != NULL) {
+                    removeSelectedTower();  // 调用防御模块函数
                 }
                 break;
 
@@ -383,7 +333,7 @@ void handleButtonClick(int x, int y) {
             case BUTTON_RESUME:  // 暂停界面的继续按钮
                 if (game.gamePaused && !game.gameOver) {
                     game.gamePaused = 0;  // 继续游戏
-                    game.buttons[BUTTON_PAUSE].text = _T("暂停");  // 更新右侧按钮文本
+                    _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("暂停")); // 更新右侧按钮文本
                 }
                 break;
             }
@@ -394,7 +344,7 @@ void handleButtonClick(int x, int y) {
 
 // 更新按钮悬停状态
 void updateButtonHover(int x, int y) {
-    for (int i = 0; i < 6; i++) {  // 现在有6个按钮
+    for (int i = 0; i < MAX_BUTTONS; i++) {
         if (game.buttons[i].active) {
             game.buttons[i].hovered = isPointInButton(x, y, &game.buttons[i]);
         }
@@ -415,10 +365,10 @@ void handleMouseClick(int x, int y, int button) {
         gridY >= 0 && gridY < MAP_HEIGHT) {
 
         if (button == 1) {  // 左键：放置炮台
-            // 由game_defense模块处理
+            placeTower(gridX, gridY);  // 调用防御模块函数
         }
         else if (button == 2) {  // 右键：选择炮台
-            // 由game_defense模块处理
+            selectTower(gridX, gridY);  // 调用防御模块函数
         }
     }
 }
@@ -458,7 +408,36 @@ void drawButton(Button* btn) {
         btn->text);
 }
 
-// 绘制游戏画面，绘制三条路径
+// 游戏主循环更新函数
+void updateGame(float deltaTime) {
+    if (game.gamePaused || game.gameOver) return;
+
+    // 更新波次生成（敌人模块）
+    updateWaveSpawning(deltaTime);
+
+    // 更新敌人（敌人模块）
+    updateEnemies(deltaTime);
+
+    // 更新炮台（防御模块）
+    updateTowers(deltaTime);
+
+    // 更新子弹（防御模块）
+    updateBullets(deltaTime);
+
+    // 检查游戏结束
+    if (game.life <= 0) {
+        game.gameOver = 1;
+        game.buttons[BUTTON_START_WAVE].active = 0;
+        game.buttons[BUTTON_PAUSE].active = 0;
+        game.buttons[BUTTON_UPGRADE].active = 0;
+        game.buttons[BUTTON_REMOVE].active = 0;
+
+        // 保存最高分
+        saveHighScore();
+    }
+}
+
+// 绘制游戏画面
 void drawGame() {
     cleardevice();  // 清空屏幕
 
@@ -517,6 +496,11 @@ void drawGame() {
             (game.paths[pathId][game.pathCounts[pathId] - 1].y + 1) * GRID_SIZE);
     }
 
+    // 调用各模块的绘制函数
+    drawTowers();     // 绘制炮台（防御模块）
+    drawEnemies();    // 绘制敌人（敌人模块）
+    drawBullets();    // 绘制子弹（防御模块）
+
     // 绘制UI面板（游戏信息显示区域）
     int panelY = MAP_HEIGHT * GRID_SIZE;  // 面板Y坐标（地图下方）
     int panelHeight = UI_PANEL_HEIGHT;    // 面板高度（增加40像素）
@@ -540,7 +524,7 @@ void drawGame() {
         game.gameLevel, game.gameSpeed);
     outtextxy(10, panelY + 30, info);
 
-    // 显示最高分
+    // 显示最高分（从game.highScore获取）
     _stprintf_s(info, _T("最高分: %d"), game.highScore);
     outtextxy(10, panelY + 50, info);
 
@@ -595,7 +579,7 @@ void drawGame() {
         outtextxy(infoX + 10, panelY + 35, info);
 
         // 升级信息
-        if (t->level < 3) {
+        if (t->level < 4) {
             _stprintf_s(info, _T("升级到Lv.%d需要: %d金"), t->level + 1, t->upgradeCost);
             outtextxy(infoX + 10, panelY + 55, info);
         }
@@ -604,7 +588,7 @@ void drawGame() {
         }
 
         // 移除返还信息
-        _stprintf_s(info, _T("移除返还: %d金"), t->cost / 2);
+        _stprintf_s(info, _T("移除返还: %d金"), calculateSellValue(t));
         outtextxy(infoX + 10, panelY + 75, info);
     }
 
@@ -671,7 +655,7 @@ void drawGame() {
         game.buttons[BUTTON_RESUME].width = 120;
         game.buttons[BUTTON_RESUME].height = 40;
         game.buttons[BUTTON_RESUME].active = 1;
-        game.buttons[BUTTON_RESUME].text = _T("继续游戏");
+        _tcscpy(game.buttons[BUTTON_RESUME].text, _T("继续游戏"));
         drawButton(&game.buttons[BUTTON_RESUME]);
     }
     else {
