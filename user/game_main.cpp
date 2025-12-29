@@ -1,4 +1,4 @@
-﻿// main.cpp - 游戏主循环
+﻿// game_main.cpp - 修复后的游戏主循环
 #define _CRT_SECURE_NO_WARNINGS
 #include <graphics.h>
 #include <conio.h>
@@ -11,6 +11,10 @@ int main() {
     // 初始化图形窗口
     initgraph(MAP_WIDTH * GRID_SIZE + UI_PANEL_WIDTH,
         MAP_HEIGHT * GRID_SIZE + UI_PANEL_HEIGHT);
+
+    // 启用双缓冲，减少闪烁
+    setbkmode(TRANSPARENT);
+    BeginBatchDraw();
 
     // 初始化游戏
     initConfig();
@@ -47,8 +51,7 @@ int main() {
                 }
             }
             else if (key == 27) {  // ESC键退出
-                closegraph();
-                return 0;
+                break;
             }
         }
 
@@ -64,10 +67,14 @@ int main() {
         // 绘制游戏画面
         drawGame();
 
+        // 刷新缓冲区
+        FlushBatchDraw();
+
         // 控制帧率
         Sleep(16);  // 约60FPS
     }
 
+    EndBatchDraw();
     closegraph();
     return 0;
 }

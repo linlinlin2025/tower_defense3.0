@@ -1,8 +1,9 @@
-// game_core.cpp - 修改后的版本
+// game_core.cpp - 修复后的版本
 #define _CRT_SECURE_NO_WARNINGS
 #include "game_core.h"
 #include "game_defense.h"
 #include "game_enemy.h"
+#include "game_rule.h"
 #include <graphics.h>
 
 // 全局变量定义
@@ -71,173 +72,8 @@ void initPathGrid() {
     }
 }
 
-// 初始化多条路径函数
-void initPaths() {
-    // 初始化第一条路径（原路径）
-    game.pathCounts[0] = 0;
-    // 起点（左下角）
-    game.paths[0][game.pathCounts[0]].x = 0;
-    game.paths[0][game.pathCounts[0]].y = MAP_HEIGHT - 1;
-    game.pathCounts[0]++;
 
-    // 向右移动
-    game.paths[0][game.pathCounts[0]].x = 5;
-    game.paths[0][game.pathCounts[0]].y = MAP_HEIGHT - 1;
-    game.pathCounts[0]++;
 
-    // 向上移动
-    game.paths[0][game.pathCounts[0]].x = 5;
-    game.paths[0][game.pathCounts[0]].y = MAP_HEIGHT - 4;
-    game.pathCounts[0]++;
-
-    // 向右移动
-    game.paths[0][game.pathCounts[0]].x = 10;
-    game.paths[0][game.pathCounts[0]].y = MAP_HEIGHT - 4;
-    game.pathCounts[0]++;
-
-    // 向下移动
-    game.paths[0][game.pathCounts[0]].x = 10;
-    game.paths[0][game.pathCounts[0]].y = MAP_HEIGHT - 1;
-    game.pathCounts[0]++;
-
-    // 终点（右下角）
-    game.paths[0][game.pathCounts[0]].x = MAP_WIDTH - 1;
-    game.paths[0][game.pathCounts[0]].y = MAP_HEIGHT - 1;
-    game.pathCounts[0]++;
-
-    // 初始化第二条路径（从左上到右下）
-    game.pathCounts[1] = 0;
-    // 起点（左上角）
-    game.paths[1][game.pathCounts[1]].x = 0;
-    game.paths[1][game.pathCounts[1]].y = 0;
-    game.pathCounts[1]++;
-
-    // 向右下移动
-    game.paths[1][game.pathCounts[1]].x = 3;
-    game.paths[1][game.pathCounts[1]].y = 3;
-    game.pathCounts[1]++;
-
-    // 向右移动
-    game.paths[1][game.pathCounts[1]].x = 7;
-    game.paths[1][game.pathCounts[1]].y = 3;
-    game.pathCounts[1]++;
-
-    // 向右下移动
-    game.paths[1][game.pathCounts[1]].x = 10;
-    game.paths[1][game.pathCounts[1]].y = 6;
-    game.pathCounts[1]++;
-
-    // 向右移动
-    game.paths[1][game.pathCounts[1]].x = 14;
-    game.paths[1][game.pathCounts[1]].y = 6;
-    game.pathCounts[1]++;
-
-    // 终点（右下角）
-    game.paths[1][game.pathCounts[1]].x = MAP_WIDTH - 1;
-    game.paths[1][game.pathCounts[1]].y = MAP_HEIGHT - 1;
-    game.pathCounts[1]++;
-
-    // 初始化第三条路径（从顶部中央到底部中央）
-    game.pathCounts[2] = 0;
-    // 起点（顶部中央）
-    game.paths[2][game.pathCounts[2]].x = MAP_WIDTH / 2;
-    game.paths[2][game.pathCounts[2]].y = 0;
-    game.pathCounts[2]++;
-
-    // 向下移动
-    game.paths[2][game.pathCounts[2]].x = MAP_WIDTH / 2;
-    game.paths[2][game.pathCounts[2]].y = 3;
-    game.pathCounts[2]++;
-
-    // 向右移动
-    game.paths[2][game.pathCounts[2]].x = MAP_WIDTH / 2 + 3;
-    game.paths[2][game.pathCounts[2]].y = 3;
-    game.pathCounts[2]++;
-
-    // 向下移动
-    game.paths[2][game.pathCounts[2]].x = MAP_WIDTH / 2 + 3;
-    game.paths[2][game.pathCounts[2]].y = 7;
-    game.pathCounts[2]++;
-
-    // 向左移动
-    game.paths[2][game.pathCounts[2]].x = MAP_WIDTH / 2 - 2;
-    game.paths[2][game.pathCounts[2]].y = 7;
-    game.pathCounts[2]++;
-
-    // 终点（底部中央）
-    game.paths[2][game.pathCounts[2]].x = MAP_WIDTH / 2 - 2;
-    game.paths[2][game.pathCounts[2]].y = MAP_HEIGHT - 1;
-    game.pathCounts[2]++;
-
-    // 初始化路径网格
-    initPathGrid();
-}
-
-// 初始化按钮
-void initButtons() {
-    int totalWidth = MAP_WIDTH * GRID_SIZE + UI_PANEL_WIDTH;
-    int panelY = MAP_HEIGHT * GRID_SIZE + 10; // 按钮放在上部
-
-    // 开始波次按钮
-    game.buttons[BUTTON_START_WAVE].x = totalWidth - 180;
-    game.buttons[BUTTON_START_WAVE].y = panelY;
-    game.buttons[BUTTON_START_WAVE].width = 80;
-    game.buttons[BUTTON_START_WAVE].height = 30;
-    _tcscpy(game.buttons[BUTTON_START_WAVE].text, _T("开始波次"));
-    game.buttons[BUTTON_START_WAVE].active = 1;
-    game.buttons[BUTTON_START_WAVE].hovered = 0;
-    game.buttons[BUTTON_START_WAVE].clicked = 0;
-
-    // 暂停/继续按钮
-    game.buttons[BUTTON_PAUSE].x = totalWidth - 90;
-    game.buttons[BUTTON_PAUSE].y = panelY;
-    game.buttons[BUTTON_PAUSE].width = 80;
-    game.buttons[BUTTON_PAUSE].height = 30;
-    _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("暂停"));
-    game.buttons[BUTTON_PAUSE].active = 1;
-    game.buttons[BUTTON_PAUSE].hovered = 0;
-    game.buttons[BUTTON_PAUSE].clicked = 0;
-
-    // 升级按钮
-    game.buttons[BUTTON_UPGRADE].x = totalWidth - 180;
-    game.buttons[BUTTON_UPGRADE].y = panelY + 40;
-    game.buttons[BUTTON_UPGRADE].width = 80;
-    game.buttons[BUTTON_UPGRADE].height = 30;
-    _tcscpy(game.buttons[BUTTON_UPGRADE].text, _T("升级"));
-    game.buttons[BUTTON_UPGRADE].active = 0;
-    game.buttons[BUTTON_UPGRADE].hovered = 0;
-    game.buttons[BUTTON_UPGRADE].clicked = 0;
-
-    // 移除按钮
-    game.buttons[BUTTON_REMOVE].x = totalWidth - 90;
-    game.buttons[BUTTON_REMOVE].y = panelY + 40;
-    game.buttons[BUTTON_REMOVE].width = 80;
-    game.buttons[BUTTON_REMOVE].height = 30;
-    _tcscpy(game.buttons[BUTTON_REMOVE].text, _T("移除"));
-    game.buttons[BUTTON_REMOVE].active = 0;
-    game.buttons[BUTTON_REMOVE].hovered = 0;
-    game.buttons[BUTTON_REMOVE].clicked = 0;
-
-    // 退出按钮
-    game.buttons[BUTTON_EXIT].x = totalWidth - 180;
-    game.buttons[BUTTON_EXIT].y = panelY + 80;
-    game.buttons[BUTTON_EXIT].width = 170;
-    game.buttons[BUTTON_EXIT].height = 30;
-    _tcscpy(game.buttons[BUTTON_EXIT].text, _T("退出游戏"));
-    game.buttons[BUTTON_EXIT].active = 1;
-    game.buttons[BUTTON_EXIT].hovered = 0;
-    game.buttons[BUTTON_EXIT].clicked = 0;
-
-    // 暂停界面的继续按钮（初始不激活，位置设为左上角）
-    game.buttons[BUTTON_RESUME].x = 10;
-    game.buttons[BUTTON_RESUME].y = 10;
-    game.buttons[BUTTON_RESUME].width = 120;
-    game.buttons[BUTTON_RESUME].height = 40;
-    _tcscpy(game.buttons[BUTTON_RESUME].text, _T("继续游戏"));
-    game.buttons[BUTTON_RESUME].active = 0;
-    game.buttons[BUTTON_RESUME].hovered = 0;
-    game.buttons[BUTTON_RESUME].clicked = 0;
-}
 
 // 初始化游戏函数：设置游戏初始状态
 void initGame() {
@@ -247,7 +83,7 @@ void initGame() {
     game.money = config.baseMoney;
     game.life = config.baseLife;
     game.score = config.baseScore;
-    game.highScore = 0;  // 初始为0，稍后从文件加载
+    game.highScore = 0;
     game.wave = 1;
     game.enemiesInWave = config.initialEnemiesInWave;
     game.enemiesSpawned = 0;
@@ -261,11 +97,11 @@ void initGame() {
     game.bulletCount = 0;
     game.selectedTower = NULL;
 
-    // 初始化波次状态
-    game.waveStarted = 0;        // 初始未开始
-    game.waveSpawning = 0;       // 未在生成
-    game.waveDelayTimer = 0;     // 延迟计时器清零
-    game.enemySpawnTimer = 0;    // 生成计时器清零
+    // 初始化波次状态 - 正确设置
+    game.waveStarted = 0;        // 0表示等待玩家点击开始
+    game.waveSpawning = 0;       // 0表示未在生成敌人
+    game.waveDelayTimer = 0;
+    game.enemySpawnTimer = 0;
 
     // 初始化路径（改为多条路径）
     initPaths();
@@ -278,6 +114,12 @@ void initGame() {
 
     // 生成第一个预览炮台
     generateNextTower();
+
+    // 调试输出
+    printf("游戏初始化完成\n");
+    printf("波次状态: waveStarted=%d, waveSpawning=%d\n",
+        game.waveStarted, game.waveSpawning);
+    printf("第一波敌人数量: %d\n", game.enemiesInWave);
 }
 
 // 检查点是否在按钮内
@@ -287,41 +129,51 @@ int isPointInButton(int x, int y, Button* btn) {
 }
 
 // 处理按钮点击
+// 处理按钮点击
 void handleButtonClick(int x, int y) {
+    printf("按钮点击: (%d, %d)\n", x, y);  // 调试输出
+
     for (int i = 0; i < MAX_BUTTONS; i++) {
         if (game.buttons[i].active && isPointInButton(x, y, &game.buttons[i])) {
+            printf("点击了按钮 %d: %s\n", i, game.buttons[i].text);  // 调试输出
+
             switch (i) {
             case BUTTON_START_WAVE:
                 if (!game.gamePaused && !game.gameOver && !game.waveStarted) {
+                    printf("开始波次 %d\n", game.wave);  // 调试输出
                     game.waveStarted = 1;    // 标记波次开始
                     game.waveSpawning = 1;   // 开始生成敌人
                     game.enemySpawnTimer = 0;
                     game.waveDelayTimer = 0;
                     game.buttons[BUTTON_START_WAVE].active = 0; // 禁用开始按钮
+
+                    // 立即生成第一个敌人用于测试
+                    spawnEnemy(ENEMY_BASIC, 0);
+                    printf("生成第一个敌人\n");  // 调试输出
                 }
                 break;
 
             case BUTTON_PAUSE:
                 if (!game.gameOver) {
-                    game.gamePaused = !game.gamePaused;  // 切换暂停状态
+                    game.gamePaused = !game.gamePaused;
                     if (game.gamePaused) {
-                        _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("继续"));
+                        _tcscpy_s(game.buttons[BUTTON_PAUSE].text, 50, _T("继续"));
                     }
                     else {
-                        _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("继续"));
+                        _tcscpy_s(game.buttons[BUTTON_PAUSE].text, 50, _T("暂停"));
                     }
                 }
                 break;
 
             case BUTTON_UPGRADE:
                 if (!game.gamePaused && !game.gameOver && game.selectedTower != NULL) {
-                    upgradeSelectedTower();  // 调用防御模块函数
+                    upgradeSelectedTower();
                 }
                 break;
 
             case BUTTON_REMOVE:
                 if (!game.gamePaused && !game.gameOver && game.selectedTower != NULL) {
-                    removeSelectedTower();  // 调用防御模块函数
+                    removeSelectedTower();
                 }
                 break;
 
@@ -332,8 +184,8 @@ void handleButtonClick(int x, int y) {
 
             case BUTTON_RESUME:  // 暂停界面的继续按钮
                 if (game.gamePaused && !game.gameOver) {
-                    game.gamePaused = 0;  // 继续游戏
-                    _tcscpy(game.buttons[BUTTON_PAUSE].text, _T("暂停")); // 更新右侧按钮文本
+                    game.gamePaused = 0;
+                    _tcscpy_s(game.buttons[BUTTON_PAUSE].text, 50, _T("暂停"));
                 }
                 break;
             }
@@ -373,47 +225,14 @@ void handleMouseClick(int x, int y, int button) {
     }
 }
 
-// 绘制按钮
-void drawButton(Button* btn) {
-    if (!btn->active) {
-        // 禁用状态的按钮
-        setfillcolor(RGB(100, 100, 100));
-        setlinecolor(RGB(120, 120, 120));
-    }
-    else if (btn->hovered) {
-        // 鼠标悬停状态的按钮
-        setfillcolor(RGB(80, 120, 200));
-        setlinecolor(RGB(100, 140, 220));
-    }
-    else {
-        // 正常状态的按钮
-        setfillcolor(RGB(60, 100, 180));
-        setlinecolor(RGB(80, 120, 200));
-    }
 
-    solidrectangle(btn->x, btn->y, btn->x + btn->width, btn->y + btn->height);
-    rectangle(btn->x, btn->y, btn->x + btn->width, btn->y + btn->height);
-
-    // 绘制按钮文字
-    settextcolor(RGB(255, 255, 255));
-    setbkmode(TRANSPARENT);
-
-    // 获取文本宽度和高度
-    int textWidth = textwidth(btn->text);
-    int textHeight = textheight(btn->text);
-
-    // 居中显示文本
-    outtextxy(btn->x + (btn->width - textWidth) / 2,
-        btn->y + (btn->height - textHeight) / 2,
-        btn->text);
-}
 
 // 游戏主循环更新函数
 void updateGame(float deltaTime) {
     if (game.gamePaused || game.gameOver) return;
 
     // 更新波次生成（敌人模块）
-    updateWaveSpawning(deltaTime);
+    updateWaveSystem(deltaTime);  // 这是新的整合函数
 
     // 更新敌人（敌人模块）
     updateEnemies(deltaTime);
@@ -456,45 +275,7 @@ void drawGame() {
         line(0, i * GRID_SIZE, MAP_WIDTH * GRID_SIZE, i * GRID_SIZE);
     }
 
-    // 绘制三条路径，使用不同颜色区分
-    COLORREF pathColors[NUM_PATHS] = {
-        RGB(150, 100, 50),   // 路径0：棕色
-        RGB(50, 150, 100),   // 路径1：蓝绿色
-        RGB(100, 50, 150)    // 路径2：紫色
-    };
-
-    // 绘制每条路径
-    for (int pathId = 0; pathId < NUM_PATHS; pathId++) {
-        setlinecolor(pathColors[pathId]);  // 设置路径颜色
-        setlinestyle(PS_SOLID, 3);         // 设置线宽为3像素
-
-        // 绘制路径线段
-        for (int i = 0; i < game.pathCounts[pathId] - 1; i++) {
-            int x1 = game.paths[pathId][i].x * GRID_SIZE + GRID_SIZE / 2;
-            int y1 = game.paths[pathId][i].y * GRID_SIZE + GRID_SIZE / 2;
-            int x2 = game.paths[pathId][i + 1].x * GRID_SIZE + GRID_SIZE / 2;
-            int y2 = game.paths[pathId][i + 1].y * GRID_SIZE + GRID_SIZE / 2;
-            line(x1, y1, x2, y2);
-        }
-    }
-    setlinestyle(PS_SOLID, 1);  // 恢复默认线宽
-
-    // 绘制每条路径的起点和终点
-    for (int pathId = 0; pathId < NUM_PATHS; pathId++) {
-        // 起点（绿色）
-        setfillcolor(RGB(0, 150 + pathId * 30, 0));  // 不同深度的绿色
-        fillrectangle(game.paths[pathId][0].x * GRID_SIZE,
-            game.paths[pathId][0].y * GRID_SIZE,
-            (game.paths[pathId][0].x + 1) * GRID_SIZE,
-            (game.paths[pathId][0].y + 1) * GRID_SIZE);
-
-        // 终点（红色）
-        setfillcolor(RGB(150 + pathId * 30, 0, 0));  // 不同深度的红色
-        fillrectangle(game.paths[pathId][game.pathCounts[pathId] - 1].x * GRID_SIZE,
-            game.paths[pathId][game.pathCounts[pathId] - 1].y * GRID_SIZE,
-            (game.paths[pathId][game.pathCounts[pathId] - 1].x + 1) * GRID_SIZE,
-            (game.paths[pathId][game.pathCounts[pathId] - 1].y + 1) * GRID_SIZE);
-    }
+    drawPaths();
 
     // 调用各模块的绘制函数
     drawTowers();     // 绘制炮台（防御模块）

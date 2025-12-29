@@ -187,14 +187,13 @@ extern GameConfig config;
 // º¯ÊýÉùÃ÷
 void initConfig();
 void initGame();
-void initPaths();
 void initPathGrid();
-void initButtons();
+
 void handleMouseClick(int x, int y, int button);
 void handleButtonClick(int x, int y);
 void updateButtonHover(int x, int y);
 void drawGame();
-void drawButton(Button* btn);
+
 int isPointInButton(int x, int y, Button* btn);
 
 void updateGame(float deltaTime);

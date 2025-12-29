@@ -1,3 +1,4 @@
+// game_rule.cpp - 修复后的版本
 #define _CRT_SECURE_NO_WARNINGS
 #include "game_rule.h"
 #include <stdio.h>
@@ -7,8 +8,6 @@
 // 最高分全局变量定义
 HighScore highScores[MAX_HIGH_SCORES];
 int highScoreCount = 0;
-
-
 
 // 检查网格是否可建造
 int canBuildAt(int gridX, int gridY) {
@@ -24,7 +23,7 @@ int canBuildAt(int gridX, int gridY) {
 
     // 检查是否已经有炮台
     for (int i = 0; i < game.towerCount; i++) {
-        if (game.towers[i].x == gridX && game.towers[i].y == gridY) {  // 修改这里：gridX → x, gridY → y
+        if (game.towers[i].x == gridX && game.towers[i].y == gridY) {
             return 0;
         }
     }
@@ -32,64 +31,6 @@ int canBuildAt(int gridX, int gridY) {
     return 1;
 }
 
-// 波次管理函数
-void updateWave() {
-    // 如果波次已开始且正在生成敌人
-    if (game.waveStarted && game.waveSpawning) {
-        // 更新敌人生成计时器
-        game.enemySpawnTimer++;
-
-        // 生成敌人（大约每秒一个）
-        if (game.enemySpawnTimer >= 60 / game.gameSpeed) {
-            if (game.enemiesSpawned < game.enemiesInWave) {
-                // 由game_enemy模块处理
-                game.enemySpawnTimer = 0;  // 重置计时器
-            }
-        }
-
-        // 检查当前波次是否完成
-        if (game.enemiesSpawned >= game.enemiesInWave &&
-            game.enemyCount == 0) {
-            // 当前波次完成
-            game.waveSpawning = 0;  // 停止生成敌人
-            game.waveDelayTimer = 0; // 开始波次间延迟计时
-
-            // 波次完成奖励
-            game.money += 50 + game.wave * 10;
-            game.score += 100 * game.gameLevel;
-
-            // 更新最高分显示
-            updateHighScoreDisplay();
-        }
-    }
-
-    // 波次间延迟处理
-    if (!game.waveSpawning && game.waveStarted) {
-        game.waveDelayTimer++;
-
-        // 延迟约2秒后开始下一波
-        if (game.waveDelayTimer > 120) {
-            startNewWave();
-            game.waveDelayTimer = 0;
-        }
-    }
-}
-
-// 开始新一波敌人
-void startNewWave() {
-    game.wave++;
-    game.enemiesSpawned = 0;
-    game.enemySpawnTimer = 0;
-    game.enemiesInWave = 5 + game.wave * 2;
-
-    // 每5波增加难度
-    if (game.wave % 5 == 0) {
-        game.enemiesInWave += 5;
-    }
-
-    // 开始生成敌人
-    game.waveSpawning = 1;
-}
 
 // 更新最高分显示
 void updateHighScoreDisplay() {
@@ -98,9 +39,9 @@ void updateHighScoreDisplay() {
     }
 }
 
-// 从文件读取最高分记录（从game_core.cpp移过来）
+// 从文件读取最高分记录
 void loadHighScores() {
-    FILE* file = fopen("highscores.dat", "rb");  // 以二进制只读方式打开文件
+    FILE* file = fopen("highscores.dat", "rb");
     if (file) {
         // 读取记录数量
         fread(&highScoreCount, sizeof(int), 1, file);
@@ -112,14 +53,17 @@ void loadHighScores() {
 
         // 设置当前最高分显示
         if (highScoreCount > 0) {
-            game.highScore = highScores[0].score;  // 最高分是第一个记录
+            game.highScore = highScores[0].score;
         }
     }
 }
 
-// 保存最高分记录到文件（从game_core.cpp移过来）
+// 保存最高分记录到文件
 void saveHighScore() {
-    FILE* file = fopen("highscores.dat", "wb");  // 以二进制写入方式打开文件
+    // 更新最高分记录
+    updateHighScores();
+
+    FILE* file = fopen("highscores.dat", "wb");
     if (file) {
         // 写入记录数量
         fwrite(&highScoreCount, sizeof(int), 1, file);
@@ -129,29 +73,28 @@ void saveHighScore() {
     }
 }
 
-// 更新最高分记录函数（从game_core.cpp移过来）
+// 更新最高分记录函数
 void updateHighScores() {
     // 如果当前得分超过最低记录或记录未满
     if (highScoreCount < MAX_HIGH_SCORES || game.score > highScores[MAX_HIGH_SCORES - 1].score) {
         // 创建新记录
         HighScore newScore;
-        strcpy(newScore.name, "Player");  // 默认玩家名
-        newScore.score = game.score;      // 当前得分
-        newScore.level = game.gameLevel;  // 当前等级
+        strcpy(newScore.name, "Player");
+        newScore.score = game.score;
+        newScore.level = game.gameLevel;
 
-        // 插入排序：找到合适的位置插入新记录
+        // 插入排序
         int i;
         for (i = highScoreCount - 1; i >= 0; i--) {
-            // 如果是第一个位置或得分低于前一个记录
             if (i == 0 || game.score <= highScores[i - 1].score) {
                 if (i < MAX_HIGH_SCORES - 1) {
-                    highScores[i] = newScore;  // 插入新记录
+                    highScores[i] = newScore;
                 }
                 break;
             }
             else {
                 if (i < MAX_HIGH_SCORES - 1) {
-                    highScores[i] = highScores[i - 1];  // 后移记录
+                    highScores[i] = highScores[i - 1];
                 }
             }
         }
@@ -165,11 +108,108 @@ void updateHighScores() {
         if (highScoreCount < MAX_HIGH_SCORES) {
             highScoreCount++;
         }
-
-        // 保存到文件
-        saveHighScore();
-
-        // 更新游戏中的最高分显示
-        game.highScore = highScores[0].score;
     }
+}
+
+
+void initButtons() {
+    int totalWidth = MAP_WIDTH * GRID_SIZE + UI_PANEL_WIDTH;
+    int panelY = MAP_HEIGHT * GRID_SIZE + 10; // 这是UI面板内部的Y坐标
+
+    // 开始波次按钮 - 修复坐标计算
+    game.buttons[BUTTON_START_WAVE].x = totalWidth - 180;
+    game.buttons[BUTTON_START_WAVE].y = panelY;  // 应该是在UI面板内部，不是地图下方
+    game.buttons[BUTTON_START_WAVE].width = 80;
+    game.buttons[BUTTON_START_WAVE].height = 30;
+    _tcscpy_s(game.buttons[BUTTON_START_WAVE].text, 50, _T("start"));  // 使用_tcscpy_s更安全
+    game.buttons[BUTTON_START_WAVE].active = 1;
+    game.buttons[BUTTON_START_WAVE].hovered = 0;
+    game.buttons[BUTTON_START_WAVE].clicked = 0;
+
+    // 暂停/继续按钮
+    game.buttons[BUTTON_PAUSE].x = totalWidth - 90;
+    game.buttons[BUTTON_PAUSE].y = panelY;
+    game.buttons[BUTTON_PAUSE].width = 80;
+    game.buttons[BUTTON_PAUSE].height = 30;
+    _tcscpy_s(game.buttons[BUTTON_PAUSE].text, 50, _T("暂停"));
+    game.buttons[BUTTON_PAUSE].active = 1;
+    game.buttons[BUTTON_PAUSE].hovered = 0;
+    game.buttons[BUTTON_PAUSE].clicked = 0;
+
+    // 升级按钮
+    game.buttons[BUTTON_UPGRADE].x = totalWidth - 180;
+    game.buttons[BUTTON_UPGRADE].y = panelY + 40;
+    game.buttons[BUTTON_UPGRADE].width = 80;
+    game.buttons[BUTTON_UPGRADE].height = 30;
+    _tcscpy_s(game.buttons[BUTTON_UPGRADE].text, 50, _T("升级"));
+    game.buttons[BUTTON_UPGRADE].active = 0;
+    game.buttons[BUTTON_UPGRADE].hovered = 0;
+    game.buttons[BUTTON_UPGRADE].clicked = 0;
+
+    // 移除按钮
+    game.buttons[BUTTON_REMOVE].x = totalWidth - 90;
+    game.buttons[BUTTON_REMOVE].y = panelY + 40;
+    game.buttons[BUTTON_REMOVE].width = 80;
+    game.buttons[BUTTON_REMOVE].height = 30;
+    _tcscpy_s(game.buttons[BUTTON_REMOVE].text, 50, _T("移除"));
+    game.buttons[BUTTON_REMOVE].active = 0;
+    game.buttons[BUTTON_REMOVE].hovered = 0;
+    game.buttons[BUTTON_REMOVE].clicked = 0;
+
+    // 退出按钮
+    game.buttons[BUTTON_EXIT].x = totalWidth - 180;
+    game.buttons[BUTTON_EXIT].y = panelY + 80;
+    game.buttons[BUTTON_EXIT].width = 170;
+    game.buttons[BUTTON_EXIT].height = 30;
+    _tcscpy_s(game.buttons[BUTTON_EXIT].text, 50, _T("exit"));
+    game.buttons[BUTTON_EXIT].active = 1;
+    game.buttons[BUTTON_EXIT].hovered = 0;
+    game.buttons[BUTTON_EXIT].clicked = 0;
+
+    // 暂停界面的继续按钮（初始不激活）
+    game.buttons[BUTTON_RESUME].x = 10;
+    game.buttons[BUTTON_RESUME].y = 10;
+    game.buttons[BUTTON_RESUME].width = 120;
+    game.buttons[BUTTON_RESUME].height = 40;
+    _tcscpy_s(game.buttons[BUTTON_RESUME].text, 50, _T("继续游戏"));
+    game.buttons[BUTTON_RESUME].active = 0;
+    game.buttons[BUTTON_RESUME].hovered = 0;
+    game.buttons[BUTTON_RESUME].clicked = 0;
+}
+
+
+
+// 绘制按钮
+void drawButton(Button* btn) {
+    if (!btn->active) {
+        // 禁用状态的按钮
+        setfillcolor(RGB(100, 100, 100));
+        setlinecolor(RGB(120, 120, 120));
+    }
+    else if (btn->hovered) {
+        // 鼠标悬停状态的按钮
+        setfillcolor(RGB(80, 120, 200));
+        setlinecolor(RGB(100, 140, 220));
+    }
+    else {
+        // 正常状态的按钮
+        setfillcolor(RGB(60, 100, 180));
+        setlinecolor(RGB(80, 120, 200));
+    }
+
+    solidrectangle(btn->x, btn->y, btn->x + btn->width, btn->y + btn->height);
+    rectangle(btn->x, btn->y, btn->x + btn->width, btn->y + btn->height);
+
+    // 绘制按钮文字
+    settextcolor(RGB(255, 255, 255));
+    setbkmode(TRANSPARENT);
+
+    // 获取文本宽度和高度
+    int textWidth = textwidth(btn->text);
+    int textHeight = textheight(btn->text);
+
+    // 居中显示文本
+    outtextxy(btn->x + (btn->width - textWidth) / 2,
+        btn->y + (btn->height - textHeight) / 2,
+        btn->text);
 }
